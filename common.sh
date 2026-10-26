@@ -56,6 +56,17 @@ java_setup()
 
 }
 
+python_setup()
+{
+    dnf install python3.14 python3.14-pip -y &>>$log_File
+    validate $? "Installing Python"
+    python3.14 -m venv /app/.venv &>>$log_File
+    validate $? "Creating Virtual Environment"
+
+    /app/.venv/bin/pip install -r requirements.txt &>>$log_File
+    validate $? "Installing Dependencies"
+}
+
 nodejs_setup()
 {
     dnf module disable nodejs -y &>>$log_File
