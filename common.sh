@@ -3,6 +3,8 @@
 logs_Folder="/var/log/shell-practice"
 log_File="${logs_Folder}/${0}.log"
 userId=$(id -u)
+script_dir=$( dirname "$(realpath "${0}")")
+domain_name=nikhil92s.store
 
 R="\e[31m"
 G="\e[32m"
@@ -29,6 +31,66 @@ validate()
         echo "$(timestamp) [INFO] $2 Success" | tee -a $log_File
     fi
 }
+
+nodejs_setup()
+{
+    dnf module disable nodejs -y &>>$log_File
+    dnf module enable nodejs:24 -y &>>$log_File
+    dnf install nodejs -y &>>$log_File
+    validate $? "Installing NodeJs"
+
+    cd /app
+    npm install &>>$log_File
+    validate $? "Installing Dependencies"
+}
+
+app_setup()
+{
+    id roboshop &>>$log_File
+    if [ $? -ne 0 ]; then
+        useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>>$log_File
+        validate $? "Creating system user"
+    else
+        echo "$(timestamp) [INFO] Roboshop User already Exist... ${Y}Skipping${N}"
+    fi
+
+    rm -rf /app
+    validate $? "Removing Old Code"
+
+    mkdir -p /app
+    validate $? "Creating App Directory"
+
+
+    curl -L -o /tmp/$app_name.zip https://raw.githubusercontent.com/daws-92s/roboshop-documentation/refs/heads/main/artifacts/$app_name-v4.zip &>>$log_File
+    validate $? "Downloading $app_name Application"
+
+
+    cd /app
+    unzip /tmp/$app_name.zip &>>$log_File
+    validate $? "Unzipping $app_name Application"
+
+
+    sed -i "s/DOMAIN_NAME/$domain_name/g" "$script_dir"/$app_name.service
+    validate $? "Updating Domain Names in $app_name.service"
+
+    cp "$script_dir"/$app_name.service /etc/systemd/system/$app_name.service 
+    validate $? "Copying $app_name Service"
+}
+
+systemd_start()
+{
+    systemctl daemon-reload &>>$log_File
+    systemctl enable $app_name &>>$log_File
+    systemctl start $app_name &>>$log_File
+    validate $? "Starting $app_name"
+}
+
+systemd_restart()
+{
+    systemctl restart $app_name &>>$log_File
+    validate $? "Restarting $app_name"
+}
+
 
 timestamp()
 {
